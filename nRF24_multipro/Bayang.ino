@@ -4,7 +4,6 @@
  the Free Software Foundation, either version 3 of the License, or
  (at your option) any later version.
 
- This program is distributed in the hope that it will be useful,
  but WITHOUT ANY WARRANTY; without even the implied warranty of
  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  GNU General Public License for more details.
@@ -80,7 +79,7 @@ uint32_t process_Bayang()
 void Bayang_init()
 {
     uint8_t i;
-    const u8 bind_address[] = {0,0,0,0,0};
+    const uint8_t bind_address[] = {0,0,0,0,0};
     for(i=0; i<BAYANG_ADDRESS_LENGTH; i++) {
         Bayang_rx_tx_addr[i] = random() & 0xff;
     }
@@ -116,16 +115,22 @@ void Bayang_bind()
         Bayang_count++;
         Bayang_count %= 4;
         delayMicroseconds(BAYANG_PACKET_PERIOD);
-        digitalWrite(ledPin, counter-- & 0x10);
+        // digitalWrite(ledPin, counter-- & 0x10);
+        if (counter-- & 0x10) {
+          LED_on;
+        } else {
+          LED_off;
+        }
     }
     XN297_SetTXAddr(Bayang_rx_tx_addr, BAYANG_ADDRESS_LENGTH);
     XN297_SetRXAddr(Bayang_rx_tx_addr, BAYANG_ADDRESS_LENGTH);
-    digitalWrite(ledPin, HIGH);
+    LED_on;
+    // digitalWrite(ledPin, HIGH);
 }
 
-#define DYNTRIM(chval) ((u8)((chval >> 2) & 0xfc))
+#define DYNTRIM(chval) ((uint8_t)((chval >> 2) & 0xfc))
 
-void Bayang_send_packet(u8 bind)
+void Bayang_send_packet(uint8_t bind)
 {
     union {
         u16 value;

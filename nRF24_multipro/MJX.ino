@@ -276,8 +276,14 @@ void MJX_bind()
     while(mjx_counter--) {
         mjx_send_packet(1);
         delayMicroseconds(MJX_PACKET_PERIOD);
-        digitalWrite(ledPin, mjx_counter & 0x10);
+        // digitalWrite(ledPin, mjx_counter & 0x10);
+        if (mjx_counter & 0x10) {
+          LED_on;
+        } else {
+          LED_off;
+        }
     }
     mjx_init2();
-    digitalWrite(ledPin, HIGH);
+    // digitalWrite(ledPin, HIGH);
+    LED_on;
 }

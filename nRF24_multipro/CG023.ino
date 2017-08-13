@@ -98,10 +98,16 @@ void CG023_bind()
         NRF24L01_FlushTx();
         NRF24L01_WriteReg(NRF24L01_05_RF_CH, CG023_RF_BIND_CHANNEL); // Set radio frequency
         CG023_WritePacket(0xAA); // send bind packet
-        digitalWrite(ledPin, bitRead(counter,3)); //check for 0bxxxx1xxx to flash LED
+        // digitalWrite(ledPin, bitRead(counter,3)); //check for 0bxxxx1xxx to flash LED
+        if (bitRead(counter,3)) {
+          LED_on;
+        } else {
+          LED_off;
+        }
         delayMicroseconds(cg_packet_period);
     }
-    digitalWrite(ledPin, HIGH); // LED on at end of bind
+    // digitalWrite(ledPin, HIGH); // LED on at end of bind
+    LED_on;
 }
 
 void CG023_WritePacket(uint8_t init)

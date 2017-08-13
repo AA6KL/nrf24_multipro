@@ -52,14 +52,14 @@ enum {
     KN_STATE_SENDING,
 };
 
-static u8 kn_hopping_channels[KN_RF_CH_COUNT];
-static u16 kn_sending_packet_period;
-static u16 kn_bind_count;
-static u8 kn_packet_send_count;
-static u8 kn_tx_addr[KN_TX_ADDRESS_SIZE];
-static u8 kn_tx_state = KN_STATE_PRE_BIND;
+static uint8_t kn_hopping_channels[KN_RF_CH_COUNT];
+static uint16_t kn_sending_packet_period;
+static uint16_t kn_bind_count;
+static uint8_t kn_packet_send_count;
+static uint8_t kn_tx_addr[KN_TX_ADDRESS_SIZE];
+static uint8_t kn_tx_state = KN_STATE_PRE_BIND;
 
-void kn_start_tx(u8 bind_yes)
+void kn_start_tx(uint8_t bind_yes)
 {
     switch( KN_FORMAT) {
         case KN_WLTOYS:
@@ -84,9 +84,9 @@ void kn_start_tx(u8 bind_yes)
     delayMicroseconds(KN_INIT_WAIT_MS);
 }
 
-u32 process_KN()
+uint32_t process_KN()
 {
-    u32 start = micros();
+    uint32_t start = micros();
     static int32_t packet_sent = 0;
     static int32_t rf_ch_idx = 0;
     switch(kn_tx_state)
@@ -134,7 +134,7 @@ u32 process_KN()
     return start + kn_sending_packet_period;
 }
 
-void kn_init(u8 tx_addr[], u8 hopping_ch[])
+void kn_init(uint8_t tx_addr[], uint8_t hopping_ch[])
 {   
     kn_calculate_tx_addr(tx_addr);
     kn_calculate_freqency_hopping_channels(*((u32*)tx_addr), hopping_ch, tx_addr);
@@ -160,20 +160,20 @@ void kn_init(u8 tx_addr[], u8 hopping_ch[])
     
 }
 
-void kn_calculate_freqency_hopping_channels(u32 seed, u8 hopping_channels[], u8 tx_addr[])
+void kn_calculate_freqency_hopping_channels(uint32_t seed, uint8_t hopping_channels[], uint8_t tx_addr[])
 {
-    u32 rnd = seed;
-    u8 idx = 0;
-    u8 i;
+    uint32_t rnd = seed;
+    uint8_t idx = 0;
+    uint8_t i;
     switch( KN_FORMAT) {
         case KN_WLTOYS:
             while (idx < KN_RF_CH_COUNT) {
                 rnd = rnd * 0x0019660D + 0x3C6EF35F; // Randomization
                 // Drop least-significant byte for better randomization. Start from 1
-                u8 next_ch = (rnd >> 8) % KN_MAX_RF_CHANNEL + 1;
+                uint8_t next_ch = (rnd >> 8) % KN_MAX_RF_CHANNEL + 1;
                 // Check that it's not duplicate nor adjacent
                 for (i = 0; i < idx; i++) {
-                    u8 ch = hopping_channels[i];
+                    uint8_t ch = hopping_channels[i];
                     if( (ch <= next_ch + 1) && (ch >= next_ch - 1) ) break;
                 }
                 if (i != idx)
@@ -191,9 +191,9 @@ void kn_calculate_freqency_hopping_channels(u32 seed, u8 hopping_channels[], u8 
     }
 }
 
-void kn_calculate_tx_addr(u8 tx_addr[])
+void kn_calculate_tx_addr(uint8_t tx_addr[])
 {
-    u32 rnd = (uint32_t)transmitterID[3] << 24
+    uint32_t rnd = (uint32_t)transmitterID[3] << 24
             | (uint32_t)transmitterID[2] << 16
             | transmitterID[1] << 8
             | transmitterID[0];
@@ -224,7 +224,7 @@ void kn_calculate_tx_addr(u8 tx_addr[])
     tx_addr[4] = 'K';
 }
 
-void kn_bind_init(u8 tx_addr[], u8 hopping_ch[], u8 bind_packet[])
+void kn_bind_init(uint8_t tx_addr[], uint8_t hopping_ch[], uint8_t bind_packet[])
 {
     NRF24L01_SetBitrate(NRF24L01_BR_1M);
     NRF24L01_WriteRegisterMulti(NRF24L01_10_TX_ADDR, (const u8*)"KNDZK", 5U);
@@ -261,7 +261,7 @@ void kn_bind_init(u8 tx_addr[], u8 hopping_ch[], u8 bind_packet[])
     kn_send_packet(packet, 83);
 }
 
-void kn_send_packet(u8 packet[], int32_t rf_ch)
+void kn_send_packet(uint8_t packet[], int32_t rf_ch)
 {
     if(rf_ch > 0)
     {
@@ -271,15 +271,15 @@ void kn_send_packet(u8 packet[], int32_t rf_ch)
     NRF24L01_WritePayload(packet, KN_PAYLOADSIZE);
 }
 
-void kn_send_init(u8 tx_addr[], u8 packet[])
+void kn_send_init(uint8_t tx_addr[], uint8_t packet[])
 {
     NRF24L01_WriteRegisterMulti(NRF24L01_10_TX_ADDR, tx_addr, KN_TX_ADDRESS_SIZE);
-    u8 bit_rate = (KN_USE1MBPS == USE1MBPS_YES) ? NRF24L01_BR_1M : NRF24L01_BR_250K;
+    uint8_t bit_rate = (KN_USE1MBPS == USE1MBPS_YES) ? NRF24L01_BR_1M : NRF24L01_BR_250K;
     NRF24L01_SetBitrate(bit_rate);
     kn_update_packet_control_data(packet, 0, 0);
 }
 
-void kn_update_packet_send_count(u8 packet[], int32_t packet_sent, int32_t rf_ch_idx )
+void kn_update_packet_send_count(uint8_t packet[], int32_t packet_sent, int32_t rf_ch_idx )
 {
     switch( KN_FORMAT) {
         case KN_WLTOYS:
@@ -292,10 +292,10 @@ void kn_update_packet_send_count(u8 packet[], int32_t packet_sent, int32_t rf_ch
 
 }
 
-void kn_update_packet_control_data(u8 packet[], int32_t packet_count, int32_t rf_ch_idx)
+void kn_update_packet_control_data(uint8_t packet[], int32_t packet_count, int32_t rf_ch_idx)
 {
-    u16 throttle, aileron, elevator, rudder;
-    u8 flags=0;
+    uint16_t throttle, aileron, elevator, rudder;
+    uint8_t flags=0;
     kn_read_controls(&throttle, &aileron, &elevator, &rudder, &flags);
     
     packet[0]  = (throttle >> 8) & 0xFF;
@@ -338,7 +338,7 @@ void kn_read_controls(u16* throttle, u16* aileron, u16* elevator, u16* rudder, u
            | GET_FLAG( AUX4, KN_FLAG_GYRO);
 }
 
-u16 kn_convert_channel(u8 num)
+uint16_t kn_convert_channel(uint8_t num)
 {
     return map(ppm[num], PPM_MIN, PPM_MAX, 0, 1023);
 }

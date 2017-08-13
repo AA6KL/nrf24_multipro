@@ -28,33 +28,103 @@
  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <util/atomic.h>
+#define DEBUG 1
+
+#if defined(ARDUINO_GENERIC_STM32F103C)
+#else
+  #include <util/atomic.h>
+#endif
 #include <EEPROM.h>
 #include "iface_nrf24l01.h"
 
+#if defined(u8)
+#else
+#define u8  uint8_t
+#define u16 uint16_t
+#define u32 uint32_t
+#endif
 
 // ############ Wiring ################
-#define PPM_pin   2  // PPM in
-//SPI Comm.pins with nRF24L01
-#define MOSI_pin  3  // MOSI - D3
-#define SCK_pin   4  // SCK  - D4
-#define CE_pin    5  // CE   - D5
-#define MISO_pin  A0 // MISO - A0
-#define CS_pin    A1 // CS   - A1
+#if defined(ARDUINO_AVR_PROMICRO)
+  #define Serial SerialUSB
+  #define HAS_SERIAL1 1
+  // ppm
+  #define PPM_pin   2  // PPM in
+  //SPI Comm.pins with nRF24L01
+  #define MOSI_pin  3  // MOSI - PD0
+  #define SCK_pin   4  // SCK  - PD4
+  #define CE_pin    5  // CE   - PC6
+  #define MISO_pin  A0 // MISO - PF7
+  #define CS_pin    A1 // CS   - PF6
+  #define ledPin     LED_BUILTIN_TX // LED  - 30
+  // SPI outputs
+  #define MOSI_on PORTD |= _BV(0)  // PD0
+  #define MOSI_off PORTD &= ~_BV(0)// PD0
+  #define SCK_on PORTD |= _BV(4)   // PD4
+  #define SCK_off PORTD &= ~_BV(4) // PD4
+  #define CE_on PORTC |= _BV(6)    // PC6
+  #define CE_off PORTC &= ~_BV(6)  // PC6
+  #define CS_on PORTF |= _BV(6)    // PF6
+  #define CS_off PORTF &= ~_BV(6)  // PF6
+  // SPI input
+  #define  MISO_on (PINF & _BV(0)) // PF7
+  // LED
+  #define LED_off     digitalWrite(ledPin, LOW)
+  #define LED_on     digitalWrite(ledPin, HIGH)
+#elif defined(ARDUINO_GENERIC_STM32F103C)
+  // #elif defined(ARDUINO_MAPLE_MINI)
+  // USBSerial Serial;
+  #define random rand
+  HardwareTimer timer(1);
+  #define HAS_SERIAL1 1
+  // ppm
+  #define PPM_pin   PA0  // PPM in, PA0
+  //SPI Comm.pins with nRF24L01
+  #define MOSI_pin  PA1  // MOSI - PA1
+  #define SCK_pin   PA2  // SCK  - PA2
+  #define CE_pin    PA3  // CE   - PA3
+  #define MISO_pin  PA4 // MISO - PA4
+  #define CS_pin    PA5 // CS   - PA5
+  #define ledPin    LED_BUILTIN // LED  - 30
+  // SPI outputs
+  #define MOSI_on   digitalWrite(MOSI_pin,HIGH)     
+  #define MOSI_off  digitalWrite(MOSI_pin,LOW)     
+  #define SCK_on    digitalWrite(SCK_pin,HIGH) 
+  #define SCK_off   digitalWrite(SCK_pin,LOW) 
+  #define CE_on     digitalWrite(CE_pin,HIGH) 
+  #define CE_off    digitalWrite(CE_pin,LOW)  
+  #define CS_on     digitalWrite(CS_pin,HIGH) 
+  #define CS_off    digitalWrite(CS_pin,LOW) 
+  // SPI input
+  #define  MISO_on     digitalRead(MISO_pin) 
+  // LED
+  #define LED_off     digitalWrite(ledPin, HIGH)
+  #define LED_on     digitalWrite(ledPin, LOW)
+#else
+  #define PPM_pin   2  // PPM in
+  //SPI Comm.pins with nRF24L01
+  #define MOSI_pin  3  // MOSI - D3
+  #define SCK_pin   4  // SCK  - D4
+  #define CE_pin    5  // CE   - D5
+  #define MISO_pin  A0 // MISO - A0
+  #define CS_pin    A1 // CS   - A1
+  #define ledPin    13 // LED  - D13
+  // SPI outputs
+  #define MOSI_on PORTD |= _BV(3)  // PD3
+  #define MOSI_off PORTD &= ~_BV(3)// PD3
+  #define SCK_on PORTD |= _BV(4)   // PD4
+  #define SCK_off PORTD &= ~_BV(4) // PD4
+  #define CE_on PORTD |= _BV(5)    // PD5
+  #define CE_off PORTD &= ~_BV(5)  // PD5
+  #define CS_on PORTC |= _BV(1)    // PC1
+  #define CS_off PORTC &= ~_BV(1)  // PC1
+  // SPI input
+  #define  MISO_on (PINC & _BV(0)) // PC0
+  // LED
+  #define LED_off     digitalWrite(ledPin, LOW)
+  #define LED_on     digitalWrite(ledPin, HIGH)
+#endif
 
-#define ledPin    13 // LED  - D13
-
-// SPI outputs
-#define MOSI_on PORTD |= _BV(3)  // PD3
-#define MOSI_off PORTD &= ~_BV(3)// PD3
-#define SCK_on PORTD |= _BV(4)   // PD4
-#define SCK_off PORTD &= ~_BV(4) // PD4
-#define CE_on PORTD |= _BV(5)    // PD5
-#define CE_off PORTD &= ~_BV(5)  // PD5
-#define CS_on PORTC |= _BV(1)    // PC1
-#define CS_off PORTC &= ~_BV(1)  // PC1
-// SPI input
-#define  MISO_on (PINC & _BV(0)) // PC0
 
 #define RF_POWER TX_POWER_80mW 
 
@@ -62,11 +132,11 @@
 // #define SPEKTRUM // TAER, 1100-1900, AIL & RUD reversed
 
 // PPM stream settings
-#define CHANNELS 12 // number of channels in ppm stream, 12 ideally
+#define CHANNELS 10 // number of channels in ppm stream, 12 ideally
 enum chan_order{
-    THROTTLE,
     AILERON,
     ELEVATOR,
+    THROTTLE,
     RUDDER,
     AUX1,  // (CH5)  led light, or 3 pos. rate on CX-10, H7, or inverted flight on H101
     AUX2,  // (CH6)  flip control
@@ -79,7 +149,7 @@ enum chan_order{
 };
 
 #define PPM_MIN 1000
-#define PPM_SAFE_THROTTLE 1050 
+#define PPM_SAFE_THROTTLE 1250 
 #define PPM_MID 1500
 #define PPM_MAX 2000
 #define PPM_MIN_COMMAND 1300
@@ -136,10 +206,13 @@ static uint16_t ppm[12] = {PPM_MIN,PPM_MIN,PPM_MIN,PPM_MIN,PPM_MID,PPM_MID,
 
 void setup()
 {
-    randomSeed((analogRead(A4) & 0x1F) | (analogRead(A5) << 5));
+    Serial.begin(9600);
+    Serial.println("Setup");
+
+    randomSeed((analogRead(0) & 0x1F) | (analogRead(0) << 5));
     pinMode(ledPin, OUTPUT);
-    digitalWrite(ledPin, LOW); //start LED off
-    pinMode(PPM_pin, INPUT);
+    LED_off;
+    pinMode(PPM_pin, INPUT_PULLUP);
     pinMode(MOSI_pin, OUTPUT);
     pinMode(SCK_pin, OUTPUT);
     pinMode(CS_pin, OUTPUT);
@@ -148,12 +221,30 @@ void setup()
     frskyInit();
     
     // PPM ISR setup
-    attachInterrupt(digitalPinToInterrupt(PPM_pin), ISR_ppm, CHANGE);
-    TCCR1A = 0;  //reset timer1
-    TCCR1B = 0;
-    TCCR1B |= (1 << CS11);  //set timer1 to increment every 1 us @ 8MHz, 0.5 us @16MHz
-
+    #if defined(ARDUINO_GENERIC_STM32F103C)
+      attachInterrupt(PPM_pin, ISR_ppm, CHANGE);
+      // set timer1 to increment every 1 us
+      #if F_CPU == 48000000L
+        timer.setPrescaleFactor(48);
+      #elif F_CPU == 72000000L
+        timer.setPrescaleFactor(72);
+      #else
+        #error  // F_CPU undefined
+      #endif 
+      // timer.setOverflow(32768);
+      timer.refresh();
+    #else
+      attachInterrupt(digitalPinToInterrupt(PPM_pin), ISR_ppm, CHANGE);
+      TCCR1A = 0;  //reset timer1
+      TCCR1B = 0;
+      TCCR1B |= (1 << CS11);  //set timer1 to increment every 1 us @ 8MHz, 0.5 us @16MHz
+    #endif
     set_txid(false);
+
+    #ifdef DEBUG
+    Serial.println("Setup finished");
+    #endif
+
 }
 
 void loop()
@@ -230,7 +321,11 @@ void set_txid(bool renew)
         transmitterID[i] = EEPROM.read(ee_TXID0+i);
     if(renew || (transmitterID[0]==0xFF && transmitterID[1]==0x0FF)) {
         for(i=0; i<4; i++) {
-            transmitterID[i] = random() & 0xFF;
+            #if defined(ARDUINO_GENERIC_STM32F103C)
+              transmitterID[i] = rand() & 0xFF;
+            #else
+              transmitterID[i] = random() & 0xFF;
+            #endif
             EEPROM.update(ee_TXID0+i, transmitterID[i]); 
         }            
     }
@@ -238,16 +333,31 @@ void set_txid(bool renew)
 
 void selectProtocol()
 {
+    #ifdef DEBUG
+    int i=0;
+    Serial.println("SelectProtocol");
+    #endif
+
     // wait for multiple complete ppm frames
     ppm_ok = false;
     uint8_t count = 10;
     while(count) {
-        while(!ppm_ok) {} // wait
-        update_ppm();
-        if(ppm[AUX8] < PPM_MAX_COMMAND) // reset chan released
-            count--;
-        ppm_ok = false;
+      while(!ppm_ok) {
+        #ifdef DEBUG
+		      // for (i=0; i<1000000;i++) {}
+          print_ppm();
+        #endif
+      } // wait
+      update_ppm();
+      if(ppm[AUX8] < PPM_MAX_COMMAND) // reset chan released
+        count--;
+      ppm_ok = false;
     }
+
+    #ifdef DEBUG
+    Serial.println("Final ppm:");
+    print_ppm();
+    #endif
     
     // startup stick commands (protocol selection / renew transmitter ID)
     
@@ -328,13 +438,22 @@ void selectProtocol()
     EEPROM.update(ee_PROTOCOL_ID, current_protocol);
     // wait for safe throttle
     while(ppm[THROTTLE] > PPM_SAFE_THROTTLE) {
-        delay(100);
+		delay(100);
         update_ppm();
     }
+
+    #ifdef DEBUG
+    Serial.print("protocol = ");
+    Serial.println(current_protocol, DEC);
+    #endif
 }
 
 void init_protocol()
 {
+    #ifdef DEBUG
+    Serial.println("init_protocol");
+    #endif
+    
     switch(current_protocol) {
         case PROTO_CG023:
         case PROTO_YD829:
@@ -391,11 +510,19 @@ void init_protocol()
 // update ppm values out of ISR    
 void update_ppm()
 {
-    for(uint8_t ch=0; ch<CHANNELS; ch++) {
+    #if defined(ARDUINO_GENERIC_STM32F103C)
+      noInterrupts();
+      for(uint8_t ch=0; ch<CHANNELS; ch++) {
+            ppm[ch] = Servo_data[ch];
+      }
+      interrupts();
+    #else
+      for(uint8_t ch=0; ch<CHANNELS; ch++) {
         ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
             ppm[ch] = Servo_data[ch];
         }
-    }
+      }
+    #endif
 #ifdef SPEKTRUM
     for(uint8_t ch=0; ch<CHANNELS; ch++) {
         if(ch == AILERON || ch == RUDDER) {
@@ -406,33 +533,79 @@ void update_ppm()
 #endif
 }
 
-void ISR_ppm()
-{
-    #if F_CPU == 16000000
-        #define PPM_SCALE 1L
-    #elif F_CPU == 8000000
-        #define PPM_SCALE 0L
-    #else
-        #error // 8 or 16MHz only !
-    #endif
+#ifdef DEBUG2
     static unsigned int pulse;
     static unsigned long counterPPM;
     static byte chan;
-    counterPPM = TCNT1;
-    TCNT1 = 0;
+#endif
+void ISR_ppm()
+{
+    #if F_CPU == 16000000
+        #define PPM_SCALE 2
+    #elif F_CPU == 8000000
+        #define PPM_SCALE 1
+    #elif F_CPU == 48000000L
+        #define PPM_SCALE 1
+    #elif F_CPU == 72000000L
+        #define PPM_SCALE 1
+    #else
+        #error // 8 or 16MHz or 72MHz only !
+    #endif
+    #ifdef DEBUG2
+    #else
+    static unsigned int pulse;
+    static unsigned long counterPPM;
+    static byte chan;
+    #endif
+    #if defined(ARDUINO_GENERIC_STM32F103C)
+      counterPPM = timer.getCount();
+      timer.setCount(0);
+    #else
+      counterPPM = TCNT1;
+      TCNT1 = 0;
+    #endif
     ppm_ok=false;
-    if(counterPPM < 510 << PPM_SCALE) {  //must be a pulse if less than 510us
+    if(counterPPM < (510 * PPM_SCALE)) {  //must be a pulse if less than 510us
         pulse = counterPPM;
     }
-    else if(counterPPM > 1910 << PPM_SCALE) {  //sync pulses over 1910us
+    else if(counterPPM > (1910 / PPM_SCALE)) {  //sync pulses over 1910us
         chan = 0;
     }
     else{  //servo values between 510us and 2420us will end up here
         if(chan < CHANNELS) {
-            Servo_data[chan]= constrain((counterPPM + pulse) >> PPM_SCALE, PPM_MIN, PPM_MAX);
+            // Servo_data[chan]= constrain((counterPPM + pulse) * PPM_SCALE, PPM_MIN, PPM_MAX);
+            Servo_data[chan]= counterPPM + pulse;
             if(chan==3)
                 ppm_ok = true; // 4 first channels Ok
         }
         chan++;
     }
 }
+
+#ifdef DEBUG
+void print_ppm() {
+  int i;
+  Serial.print("PPM: ");
+  #ifdef DEBUG2
+  Serial.print(" pulse: ");
+  Serial.print(pulse,DEC);
+  Serial.print("\t");
+  Serial.print(" counterPPM: ");
+  Serial.print(counterPPM,DEC);
+  Serial.print("\t");
+  Serial.print(" chan: ");
+  Serial.print(chan,DEC);
+  Serial.print("\t");
+  #endif
+  for (i=0; i<12; i++) {
+    Serial.print("[");
+    Serial.print(i,DEC);
+    Serial.print("]:");
+    // Serial.print(ppm[i], DEC);
+    Serial.print(Servo_data[i], DEC);
+    Serial.print("\t");
+  }
+  Serial.println();
+}
+#endif
+

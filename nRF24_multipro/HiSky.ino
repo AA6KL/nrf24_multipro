@@ -44,9 +44,15 @@ uint32_t process_HiSky()
         {
             hisky_bind_counter--;
             if (! hisky_bind_counter) // binding finished
-                digitalWrite(ledPin, HIGH);
+                // digitalWrite(ledPin, HIGH);
+                LED_on;
             else
-                digitalWrite(ledPin, bitRead(hisky_bind_counter, 3));
+                // digitalWrite(ledPin, bitRead(hisky_bind_counter, 3));
+                if (bitRead(hisky_bind_counter, 3)) {
+                  LED_on;
+                } else {
+                  LED_off;
+                }
             NRF24L01_WritePayload(hisky_bind_buf_array[hisky_binding_idx],10);
             hisky_binding_idx++;
             if (hisky_binding_idx >= 4)

@@ -120,13 +120,19 @@ void CX10_bind()
                 }
                 break;
         }
-        digitalWrite(ledPin, counter-- & 0x10);
+        // digitalWrite(ledPin, counter-- & 0x10);
+        if (counter-- & 0x10) {
+          LED_on;
+        } else {
+          LED_off;
+        }
         if(ppm[AUX8] > PPM_MAX_COMMAND) {
             reset = true;
             return;
         }
     }
-    digitalWrite(ledPin, HIGH);
+    // digitalWrite(ledPin, HIGH);
+    LED_on;
 }
 
 void CX10_Write_Packet(uint8_t init)

@@ -331,13 +331,19 @@ uint32_t process_SymaX()
             {
                 symax_init2();
                 SymaX_phase = SYMAX_DATA;
-                digitalWrite(ledPin, HIGH);
+                // digitalWrite(ledPin, HIGH);
+                LED_on;
             }
             else
             {
                 SYMAX_send_packet(1);
                 SymaX_bind_counter--;
-                digitalWrite(ledPin, SymaX_bind_counter & 0x10);
+                // digitalWrite(ledPin, SymaX_bind_counter & 0x10);
+                if (SymaX_bind_counter & 0x10) {
+                  LED_on;
+                } else {
+                  LED_off;
+                }
             }
             break;
         case SYMAX_DATA:

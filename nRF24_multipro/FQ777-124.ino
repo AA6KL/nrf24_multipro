@@ -86,11 +86,17 @@ void FQ777124_bind()
     while(counter) {
         FQ777124_send_packet(1);
         delayMicroseconds(FQ777124_PACKET_PERIOD);
-        digitalWrite(ledPin, counter-- & 0x10);
+        // digitalWrite(ledPin, counter-- & 0x10);
+        if (counter-- & 0x10) {
+          LED_on;
+        } else {
+          LED_off;
+        }
     }
     
     NRF24L01_WriteRegisterMulti(NRF24L01_10_TX_ADDR, FQ777124_rx_tx_addr, FQ777124_ADDRESS_LENGTH);
-    digitalWrite(ledPin, HIGH);
+    // digitalWrite(ledPin, HIGH);
+    LED_on;
 }
 
 
@@ -169,7 +175,7 @@ void ssv_pack_dpl(uint8_t addr[], uint8_t pid, uint8_t* len, uint8_t* payload, u
 
 
 
-void FQ777124_send_packet(u8 bind)
+void FQ777124_send_packet(uint8_t bind)
 {
 
     uint8_t packet_len = FQ777124_PACKET_SIZE;

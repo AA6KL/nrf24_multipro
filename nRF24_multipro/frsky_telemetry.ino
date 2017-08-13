@@ -20,7 +20,16 @@
  https://github.com/openLRSng/openLRSng/wiki/Telemetry-guide
  */
 
+
 #include "frsky_telemetry.h"
+
+#ifdef HAS_SERIAL1
+#define Serial1 Serial1
+#else
+// #include <SoftwareSerial.h>
+// SoftwareSerial Serial1(7, 8);
+#define Serial1 Serial
+#endif
 
 #define SMARTPORT_INTERVAL 12000
 #define SMARTPORT_BAUDRATE 57600
@@ -31,23 +40,23 @@ uint8_t frskySchedule = 0;
 void frskyInit()
 {
   frskyLast = micros();
-  Serial.begin(SMARTPORT_BAUDRATE);
+  Serial1.begin(SMARTPORT_BAUDRATE);
 }
 
 void smartportSend(uint8_t *p)
 {
   uint16_t crc = 0;
-  Serial.write(0x7e);
+  Serial1.write(0x7e);
   for (int i = 0; i < 9; i++) {
     if (i == 8) {
       p[i] = 0xff - crc;
     }
     if ((p[i] == 0x7e) || (p[i] == 0x7d)) {
-      Serial.write(0x7d);
-      Serial.write(0x20 ^ p[i]);
+      Serial1.write(0x7d);
+      Serial1.write(0x20 ^ p[i]);
     } 
     else {
-      Serial.write(p[i]);
+      Serial1.write(p[i]);
     }
     if (i>0) {
       crc += p[i]; //0-1FF
@@ -61,7 +70,7 @@ void smartportSend(uint8_t *p)
 
 void smartportIdle()
 {
-  Serial.write(0x7e);
+  Serial1.write(0x7e);
 }
 
 void smartportSendFrame()

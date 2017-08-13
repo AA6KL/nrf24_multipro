@@ -105,11 +105,17 @@ void V2x2_bind()
     uint16_t counter=1000;
     while(counter--) {
         V2x2_send_packet(1); 
-        digitalWrite(ledPin, bitRead(counter,3)); //check for 0bxxxx1xxx to flash LED
+        // digitalWrite(ledPin, bitRead(counter,3)); //check for 0bxxxx1xxx to flash LED
+        if (bitRead(counter,3)) {
+          LED_on;
+        } else {
+          LED_off;
+        }
         delayMicroseconds(V2x2_PACKET_PERIOD);
     } 
     V2x2_flags = 0; 
-    digitalWrite(ledPin, HIGH); // LED on at end of bind  
+    // digitalWrite(ledPin, HIGH); // LED on at end of bind  
+    LED_on;
 }
 
 uint32_t process_V2x2()

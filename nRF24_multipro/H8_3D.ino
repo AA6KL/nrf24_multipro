@@ -53,9 +53,15 @@ void H8_3D_bind()
     while(counter--) {
         H8_3D_send_packet(true);
         delayMicroseconds(H8_3D_PACKET_PERIOD);
-        digitalWrite(ledPin, counter & 0x10);
+        // digitalWrite(ledPin, counter & 0x10);
+        if (counter & 0x10) {
+          LED_on;
+        } else {
+          LED_off;
+        }
     }
-    digitalWrite(ledPin, HIGH);
+    // digitalWrite(ledPin, HIGH);
+    LED_on;
 }    
 
 uint8_t  H8_3D_checksum()
